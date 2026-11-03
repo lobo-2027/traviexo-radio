@@ -6,26 +6,41 @@ const img=new Image();img.onload=()=>{};img.onerror=()=>document.getElementById(
 
 const pulseCanvas=document.getElementById('pulseCanvas'),pctx=pulseCanvas.getContext('2d');let pulseFrame=0;
 function animatePulse(){
-const w=pulseCanvas.clientWidth,h=pulseCanvas.clientHeight,dpr=Math.min(window.devicePixelRatio||1,2);
-if(pulseCanvas.width!==Math.round(w*dpr)||pulseCanvas.height!==Math.round(h*dpr)){pulseCanvas.width=Math.round(w*dpr);pulseCanvas.height=Math.round(h*dpr)}
-pctx.setTransform(dpr,0,0,dpr,0,0);pctx.clearRect(0,0,w,h);
-const t=pulseFrame++*.045,active=!!osc,amount=active?1:.7;
-pctx.save();pctx.globalCompositeOperation='screen';
-for(let i=0;i<23;i++){
-const x=w*(.145+i*.0322),mid=Math.abs(i-11)/11;
-const base=h*(.705),limit=h*(.19+(.19*(1-mid)));
-const a=(.35+.65*Math.abs(Math.sin(t*1.2+i*.49)*Math.cos(t*.64-i*.25)))*amount;
-const bh=limit*a,barW=Math.max(2,w*.009);
-const g=pctx.createLinearGradient(x,base-bh,x,base);
-const pink=mid>.62;
-g.addColorStop(0,pink?'rgba(255,42,239,.06)':'rgba(25,231,255,.06)');
-g.addColorStop(.6,pink?'rgba(255,31,237,.45)':'rgba(0,213,255,.44)');
-g.addColorStop(1,pink?'rgba(255,53,247,.86)':'rgba(34,245,255,.9)');
-pctx.fillStyle=g;pctx.shadowColor=pink?'#f51de9':'#00eaff';pctx.shadowBlur=w*.012;
-pctx.fillRect(x-barW/2,base-bh,barW,bh);
-}
-pctx.restore();
-requestAnimationFrame(animatePulse)
+ const w=pulseCanvas.clientWidth,h=pulseCanvas.clientHeight;
+ if(!w||!h){requestAnimationFrame(animatePulse);return}
+ const dpr=Math.min(window.devicePixelRatio||1,2);
+ if(pulseCanvas.width!==Math.round(w*dpr)||pulseCanvas.height!==Math.round(h*dpr)){pulseCanvas.width=Math.round(w*dpr);pulseCanvas.height=Math.round(h*dpr)}
+ pctx.setTransform(dpr,0,0,dpr,0,0);pctx.clearRect(0,0,w,h);
+ const t=performance.now()/1000,active=!!osc;
+ const base=h*.724,top=h*.16,left=w*.145,right=w*.86;
+ // Darken the printed equalizer while retaining the original chrome platform.
+ const shade=pctx.createLinearGradient(0,top,0,base);
+ shade.addColorStop(0,'rgba(2,3,18,.82)');shade.addColorStop(.7,'rgba(2,3,18,.76)');shade.addColorStop(1,'rgba(2,3,18,0)');
+ pctx.fillStyle=shade;pctx.fillRect(left,top,right-left,base-top);
+ const n=25,step=(right-left)/n,bw=step*.68;
+ for(let i=0;i<n;i++){
+  const x=left+(i+.5)*step;
+  const shape=1-Math.abs(i-(n-1)/2)/((n-1)/2);
+  const wave=Math.abs(Math.sin(t*2.8+i*.57)*Math.cos(t*1.35-i*.32));
+  const energy=(.12+.88*wave)*(active?1:.84);
+  const height=h*(.14+shape*.30)*energy;
+  const pink=shape<.48,blue=shape>.73;
+  const color=pink?'255,42,235':blue?'0,235,255':'38,140,255';
+  const segment=h*.012,gap=h*.005;
+  pctx.shadowColor='rgb('+color+')';pctx.shadowBlur=w*.013;
+  for(let y=base-segment;y>base-height;y-=segment+gap){
+   const opacity=.65+.35*Math.sin(t*2+i*.3)**2;
+   pctx.fillStyle='rgba('+color+','+opacity+')';
+   pctx.fillRect(x-bw/2,y,bw,segment);
+  }
+ }
+ pctx.shadowBlur=0;
+ // Bright moving scan beam makes motion perceptible even without audio.
+ const scanY=base-(.5+.5*Math.sin(t*1.8))*(base-top)*.85;
+ const beam=pctx.createLinearGradient(left,0,right,0);
+ beam.addColorStop(0,'rgba(255,36,241,0)');beam.addColorStop(.25,'rgba(255,36,241,.35)');beam.addColorStop(.5,'rgba(0,255,255,.65)');beam.addColorStop(.75,'rgba(255,36,241,.35)');beam.addColorStop(1,'rgba(255,36,241,0)');
+ pctx.fillStyle=beam;pctx.fillRect(left,scanY,right-left,Math.max(2,h*.005));
+ requestAnimationFrame(animatePulse);
 }
 if(pctx)requestAnimationFrame(animatePulse);
 </script></body></html>
