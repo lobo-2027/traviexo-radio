@@ -56,6 +56,19 @@ body.night-luxury .visualizer .color-control,body.night-luxury .visualizer .nigh
 body.night-luxury .slogan,body.night-luxury .notice{color:#d2d5dc;text-shadow:none}
 @media(max-width:600px){.visualizer .night-control{top:39px;right:91px;padding:7px 9px;font-size:10px}}
 @media(prefers-reduced-motion:reduce){body.night-luxury .visualizer::before,body.night-luxury .visualizer::after,body.night-luxury .music-card .timeline::before{animation:none}}
+/* Royal Noir: black velvet, antique champagne, warm restrained glow */
+body.royal-noir{background:#080808}
+body.royal-noir .music-card{background:linear-gradient(145deg,#24221ff5,#0b0b0bf9 58%,#1a1713f8);border-color:#927a55;box-shadow:inset 0 1px #d7c5a02e,0 24px 48px #000e,0 0 16px #aa7a2b18}
+body.royal-noir .music-card .cover{background:radial-gradient(circle at 40% 35%,#3c3529,#0a0a0a 75%);border-color:#8e7856}
+body.royal-noir .music-card .track-title{color:#e5d7bd}
+body.royal-noir .music-card .track-sub,body.royal-noir .music-card .time-labels{color:#b2a899}
+body.royal-noir .music-card .player-buttons button{color:#d8c5a3}
+body.royal-noir .music-card .player-buttons .center-play{background:linear-gradient(145deg,#353027,#11100e);border-color:#bda375}
+body.royal-noir .visualizer .color-control,body.royal-noir .visualizer .night-control{border-color:#8c7652;background:linear-gradient(145deg,#29251e,#100f0d);color:#e1d0ad}
+body.royal-noir .visualizer .vtitle{color:#e3d2b5}
+body.royal-noir .visualizer .theme-label{color:#c2aa80}
+body.royal-noir.night-luxury .stage::before,body.royal-noir.night-luxury .visualizer .artwork{filter:var(--art-filter) brightness(calc(var(--art-brightness) * .72)) contrast(.92)}
+body.royal-noir.night-luxury .music-card{border-color:#756347}
 </style></head><body><main class="stage" id="stage" aria-label="TRAVIEXO RADIO, vista previa visual fiel al diseño aprobado"><div class="missing">Falta subir radio-art.jpg a esta rama de GitHub. La interfaz y sus controles ya están preparados.</div><div class="overlay slogan">Donde la música trasciende fronteras.</div><div class="overlay live" id="live">DEMO</div><div class="overlay clock" id="clock">Chicago</div><button class="hit prev" id="prev" aria-label="Programa anterior"></button><button class="hit play" id="play" aria-label="Iniciar prueba de audio"></button><button class="hit next" id="next" aria-label="Programa siguiente"></button><input class="volume" type="range" id="volume" min="0" max="100" value="20" aria-label="Volumen"><div class="notice" id="notice" aria-live="polite">Vista previa · Sin emisión en vivo ni música comercial</div></main><section class="visualizer" id="visualizer" aria-label="Visualizador musical de demostración"><div class="artwork" aria-hidden="true"></div><button type="button" class="night-control" id="nightControl" aria-pressed="false" aria-label="Activar Night Luxury">☾ NIGHT</button><button type="button" class="color-control" id="colorControl" aria-label="Cambiar colores del visualizador">🎨 COLOR</button><div class="theme-label" id="themeLabel">NEON ORIGINAL</div><div class="vtitle" id="vtitle">TRAVIEXO PULSE 3D</div><canvas id="pulseCanvas" aria-hidden="true"></canvas><div class="music-card"><div class="track-row"><div class="cover" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="track-meta"><div class="track-title">TRAVIEXO RADIO</div><div class="track-sub" id="cardShow">Pop &amp; Rock Total</div><span class="track-tag">AUDIO DEMO</span></div></div><div class="timeline"></div><div class="time-labels"><span id="demoTime">00:00</span><span>Señal de prueba · sin canción</span></div><div class="player-buttons"><button id="cardPrev" aria-label="Programa anterior"><svg viewBox="0 0 24 24"><path d="M5 5h2v14H5zm3 7 11-7v14z"/></svg></button><button id="cardPlay" class="center-play" aria-label="Iniciar o detener audio de prueba"><svg viewBox="0 0 24 24"><path d="m8 5 12 7-12 7z"/></svg></button><button id="cardNext" aria-label="Programa siguiente"><svg viewBox="0 0 24 24"><path d="M17 5h2v14h-2zm-1 7L5 5v14z"/></svg></button></div><div class="volume-row"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3zm12-1a6 6 0 0 1 0 8v-2a4 4 0 0 0 0-4V8zm2-3a10 10 0 0 1 0 14v-2a8 8 0 0 0 0-10V5z"/></svg><input type="range" id="cardVolume" min="0" max="100" value="20" aria-label="Volumen de prueba"></div></div><div class="vinfo" id="vinfo">Animación de demostración · Sin música comercial</div></section><script>
 const img=new Image();img.onload=()=>{};img.onerror=()=>document.getElementById('stage').classList.add('no-image');img.src='radio-art.jpg';const shows=['Buenos Días Musicales','México en el Corazón','Pop & Rock Total','Ritmos Latinos','Noches Románticas'];let index=2,ctx,osc,gain,startedAt=0;const notice=document.getElementById('notice');function updateTime(){const t=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'numeric',minute:'2-digit',hour12:true}).format(new Date());document.getElementById('clock').textContent=t}updateTime();setInterval(updateTime,30000);function select(delta){index=(index+delta+shows.length)%shows.length;document.getElementById('cardShow').textContent=shows[index];notice.textContent='Seleccionado: '+shows[index]+' · Música aún no disponible'}document.getElementById('prev').onclick=()=>select(-1);document.getElementById('next').onclick=()=>select(1);document.getElementById('play').onclick=async()=>{if(osc){osc.stop();osc.disconnect();osc=null;startedAt=0;notice.textContent='Prueba de audio detenida';return}try{ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();await ctx.resume();osc=ctx.createOscillator();gain=ctx.createGain();osc.type='sine';osc.frequency.value=220;gain.gain.value=.02;osc.connect(gain);gain.connect(ctx.destination);osc.start();startedAt=performance.now();notice.textContent='Tono original de prueba · No es una transmisión de radio'}catch(e){notice.textContent='Audio de prueba no disponible'}};document.getElementById('volume').oninput=e=>{if(gain)gain.gain.value=Number(e.target.value)/100*.08};
 
@@ -63,15 +76,53 @@ const themes=[
 {name:'BLACK CHROME · ICE BLUE',filter:'grayscale(1) sepia(1) hue-rotate(165deg) saturate(2.8) contrast(1.16)',brightness:'.77',colors:['122,174,211','169,222,247','72,122,164']},
 {name:'MIDNIGHT GOLD',filter:'grayscale(1) sepia(1) saturate(1.8) contrast(1.19)',brightness:'.74',colors:['167,118,49','229,188,105','123,86,39']},
 {name:'EMERALD STEEL',filter:'grayscale(1) sepia(1) hue-rotate(103deg) saturate(2.2) contrast(1.16)',brightness:'.75',colors:['38,135,103','105,212,167','32,104,87']},
-{name:'NEON ORIGINAL',filter:'none',brightness:'1',colors:['255,42,235','0,235,255','38,140,255']}
+{name:'NEON ORIGINAL',filter:'none',brightness:'1',colors:['255,42,235','0,235,255','38,140,255']},
+{name:'ROYAL NOIR · CHAMPAGNE GOLD',filter:'grayscale(1) sepia(.9) saturate(.75) contrast(1.13)',brightness:'.66',colors:['125,94,58','198,164,107','87,70,50']}
 ];let themeIndex=0;try{const saved=localStorage.getItem('traviexo-theme');if(saved!==null&&Number.isInteger(Number(saved))&&Number(saved)>=0&&Number(saved)<themes.length)themeIndex=Number(saved)}catch(e){}
 const visualizerEl=document.getElementById('visualizer'),themeLabel=document.getElementById('themeLabel');
 const nightControl=document.getElementById('nightControl');
+const ROYAL_NOIR=4;
+let dayThemeIndex=themeIndex;
 let nightEnabled=false;try{nightEnabled=localStorage.getItem('traviexo-night-luxury')==='1'}catch(e){}
-function applyNight(){document.body.classList.toggle('night-luxury',nightEnabled);nightControl.setAttribute('aria-pressed',String(nightEnabled));nightControl.textContent=nightEnabled?'☀ DAY':'☾ NIGHT';nightControl.setAttribute('aria-label',nightEnabled?'Desactivar Night Luxury':'Activar Night Luxury')}
-nightControl.addEventListener('click',()=>{nightEnabled=!nightEnabled;try{localStorage.setItem('traviexo-night-luxury',nightEnabled?'1':'0')}catch(e){}applyNight()});applyNight();
-function applyTheme(){const theme=themes[themeIndex];visualizerEl.style.setProperty('--art-filter',theme.filter);visualizerEl.style.setProperty('--art-brightness',theme.brightness);document.getElementById('stage').style.setProperty('--art-filter',theme.filter);document.getElementById('stage').style.setProperty('--art-brightness',theme.brightness);visualizerEl.style.setProperty('--accent','rgb('+theme.colors[1]+')');themeLabel.textContent=theme.name;const metal=['#b9cbd8','#d8bd86','#9ac5b0','#c8b4db'][themeIndex];const ambient=['rgba(48,119,166,.18)','rgba(155,106,32,.16)','rgba(28,125,91,.16)','rgba(141,50,158,.19)'][themeIndex];for(const el of [visualizerEl,document.getElementById('stage')]){el.style.setProperty('--accent','rgb('+theme.colors[1]+')');el.style.setProperty('--metal',metal);el.style.setProperty('--ambient',ambient)}document.getElementById('colorControl').setAttribute('aria-label','Cambiar colores. Actual: '+theme.name)}
-document.getElementById('colorControl').addEventListener('click',()=>{themeIndex=(themeIndex+1)%themes.length;try{localStorage.setItem('traviexo-theme',String(themeIndex))}catch(e){}applyTheme()});applyTheme();
+function applyTheme(){
+ const theme=themes[themeIndex];
+ const metal=['#b9cbd8','#d8bd86','#9ac5b0','#c8b4db','#c5a36a'][themeIndex];
+ const ambient=['rgba(48,119,166,.18)','rgba(155,106,32,.16)','rgba(28,125,91,.16)','rgba(141,50,158,.19)','rgba(122,82,38,.11)'][themeIndex];
+ for(const el of [visualizerEl,document.getElementById('stage')]){
+  el.style.setProperty('--art-filter',theme.filter);
+  el.style.setProperty('--art-brightness',theme.brightness);
+  el.style.setProperty('--accent','rgb('+theme.colors[1]+')');
+  el.style.setProperty('--metal',metal);
+  el.style.setProperty('--ambient',ambient)
+ }
+ themeLabel.textContent=theme.name;
+ document.getElementById('colorControl').setAttribute('aria-label','Cambiar colores. Actual: '+theme.name);
+ document.body.classList.toggle('royal-noir',themeIndex===ROYAL_NOIR)
+}
+function applyNight(){
+ document.body.classList.toggle('night-luxury',nightEnabled);
+ nightControl.setAttribute('aria-pressed',String(nightEnabled));
+ nightControl.textContent=nightEnabled?'☀ DAY':'☾ NIGHT';
+ nightControl.setAttribute('aria-label',nightEnabled?'Desactivar Night Luxury':'Activar Night Luxury');
+ themeIndex=nightEnabled?ROYAL_NOIR:dayThemeIndex;
+ applyTheme()
+}
+nightControl.addEventListener('click',()=>{
+ nightEnabled=!nightEnabled;
+ try{localStorage.setItem('traviexo-night-luxury',nightEnabled?'1':'0')}catch(e){}
+ applyNight()
+});
+document.getElementById('colorControl').addEventListener('click',()=>{
+ if(nightEnabled){
+  nightEnabled=false;
+  try{localStorage.setItem('traviexo-night-luxury','0')}catch(e){}
+ }
+ dayThemeIndex=(themeIndex+1)%themes.length;
+ themeIndex=dayThemeIndex;
+ try{localStorage.setItem('traviexo-theme',String(dayThemeIndex))}catch(e){}
+ applyNight()
+});
+applyNight();
 document.getElementById('cardPrev').onclick=()=>document.getElementById('prev').click();
 document.getElementById('cardNext').onclick=()=>document.getElementById('next').click();
 document.getElementById('cardPlay').onclick=()=>document.getElementById('play').click();
