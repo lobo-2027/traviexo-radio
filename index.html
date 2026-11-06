@@ -212,7 +212,7 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
 /* V53 independent country > city explorer. Uses the existing public Radio Browser directory.
    No Radio Garden API or unauthorized stream extraction. */
 (function(){
- let worldMode=false,worldQuery='',scope='city',searchTimer=null,searchAbort=null;
+ let worldMode=false,worldQuery='',scope='city',searchTimer=null,searchAbort=null,worldBase=[],worldResults=null;
  const places=[
  ['🇲🇽','México','MX',['Ciudad de México','Monterrey','Guadalajara','Puebla','Tijuana']],
  ['🇺🇸','United States','US',['Chicago','New York','Los Angeles','Miami','Houston']],
@@ -234,14 +234,14 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
  $('worldToggle').onclick=()=>{const panel=$('worldPanel');panel.hidden=!panel.hidden;$('worldToggle').textContent='🌎 International Music · Explore the World '+(panel.hidden?'▾':'▴')};
  $('worldFind').onclick=async()=>{
   const p=places[current],city=citySelect.value,token=++request;
-  tab='stations';selectedGenre='';searchText='';filter='all';worldMode=true;worldQuery='';$('worldSmart').value='';$('worldSmartWrap').hidden=false;status('Buscando estaciones de '+city+'…');
+  tab='stations';selectedGenre='';searchText='';filter='all';worldMode=true;worldQuery='';worldResults=null;$('worldSmart').value='';$('worldSmartWrap').hidden=false;status('Buscando estaciones de '+city+'…');
   const query=new URLSearchParams({countrycode:p[2],state:city,hidebroken:'true',order:'votes',reverse:'true',limit:'100'});
   try{
    let response=await fetch('https://de1.api.radio-browser.info/json/stations/search?'+query);
    if(!response.ok)throw Error('HTTP '+response.status);
    let rows=await response.json();if(token!==request)return;
    stations=rows.filter(x=>x.lastcheckok===1&&/^https:\/\//.test(x.url_resolved||x.url||'')).map(clean).filter(x=>x.id&&x.url);
-   selected=-1;render();$('heading').textContent='📻 '+city+' · '+stations.length+' estaciones';
+   worldBase=stations.slice();selected=-1;render();$('heading').textContent='📻 '+city+' · '+stations.length+' estaciones';
    status(stations.length+' estaciones HTTPS verificadas en '+city+' · Radio Browser');
    $('stations').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){if(token===request)status('No se pudo consultar el catálogo de '+city)}
@@ -257,6 +257,8 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
  }
  function applyLocal(){
   if(!worldMode||tab!=='stations')return;
+  if(!worldQuery){worldResults=null;stations=worldBase.slice()}
+  else if(worldResults===null){stations=worldBase.slice()}
   render();
   const count=stations.filter(x=>matches(x,worldQuery)).length;
   $('worldSmartInfo').textContent=worldQuery?count+' coincidencias locales · buscando más estaciones…':'Escribe una estación, género o frecuencia. La búsqueda también consulta el directorio.';
@@ -279,13 +281,15 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
   try{
    const [names,tags]=await Promise.all([fetchRows('name'),fetchRows('tag')]);
    if(token!==request)return;
-   const existing=new Map(stations.map(x=>[x.id,x]));
+   const existing=new Map();
    for(const x of [...names,...tags]){
     const url=x.url_resolved||x.url||'';
     if(x.lastcheckok!==1||!url.startsWith('https://')||!x.stationuuid)continue;
+    if(scope!=='global'&&x.countrycode!==p[2])continue;
     if(!existing.has(x.stationuuid))existing.set(x.stationuuid,clean(x));
    }
-   stations=[...existing.values()].sort((a,b)=>{
+   worldResults=[...existing.values()];
+   stations=worldResults.slice().sort((a,b)=>{
     const rank=x=>{const n=norm(x.name),q=norm(term);return n===q?0:n.startsWith(q)?1:n.includes(q)?2:matches(x,term)?3:4};
     return rank(a)-rank(b);
    });
@@ -299,6 +303,7 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
   worldQuery=smart.value.trim();
   clearTimeout(searchTimer);
   if(searchAbort)searchAbort.abort();
+  worldResults=null;
   applyLocal();
   if(worldQuery.length>=2)searchTimer=setTimeout(remoteSearch,450);
  }
@@ -317,7 +322,7 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
   const rows=[...$('stations').querySelectorAll('.fav-row')];
   rows.forEach(row=>{row.hidden=!norm(row.textContent).includes(norm(query))});
   const count=rows.filter(row=>!row.hidden).length;
-  $('worldSmartInfo').textContent=count+' coincidencias entre '+rows.length+' estaciones cargadas';
+  $('worldSmartInfo').textContent=count+' coincidencias visibles';
  };
  refresh();
 })();
