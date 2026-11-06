@@ -197,6 +197,10 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
  safe(()=>ms.setActionHandler('pause',()=>{smartIntent=false;smartGeneration++;cancelReconnect();audio.pause();state()}));
  safe(()=>ms.setActionHandler('nexttrack',()=>{if(stations.length)choose((selected+1)%stations.length)}));
  safe(()=>ms.setActionHandler('previoustrack',()=>{if(stations.length)choose((selected-1+stations.length)%stations.length)}));
+ /* Live streams cannot seek: explicitly clear unsupported seeking actions. */
+ safe(()=>ms.setActionHandler('seekbackward',null));
+ safe(()=>ms.setActionHandler('seekforward',null));
+ safe(()=>ms.setActionHandler('seekto',null));
  metadata();state();
 })();
 </script></body></html>
