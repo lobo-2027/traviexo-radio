@@ -247,8 +247,9 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
   }catch(e){if(token===request)status('No se pudo consultar el catálogo de '+city)}
  };
  const smart=$('worldSmart');
- const norm=v=>(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim();
+ const norm=v=>(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
  const matches=(x,q)=>norm(x.name+' '+(x.desc||'')).includes(norm(q));
+ const related=q=>({sonidera:['sonidera','sonidero','sonido','cumbia'],cumbia:['cumbia','sonidera'],reggaeton:['reggaeton','reguetón']})[norm(q)]||[q];
  function scopeButtons(){
   [['city','worldScopeCity'],['country','worldScopeCountry'],['global','worldScopeGlobal']].forEach(([key,id])=>{
    $(id).style.borderColor=scope===key?'#ffcc78':'#a99880';
@@ -271,21 +272,26 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
   const params=new URLSearchParams({hidebroken:'true',order:'votes',reverse:'true',limit:'200'});
   if(scope!=='global')params.set('countrycode',p[2]);
   if(scope==='city')params.set('state',city);
-  // Radio Browser has separate name and tag search; merge them without duplicate stations.
-  const fetchRows=async field=>{
-   const q=new URLSearchParams(params);q.set(field,term);
+  // Search name and tags, including useful related musical terms.
+  const fetchRows=async(field,value)=>{
+   const q=new URLSearchParams(params);q.set(field,value);
    const response=await fetch('https://de1.api.radio-browser.info/json/stations/search?'+q,{signal:searchAbort.signal});
    if(!response.ok)throw Error('HTTP '+response.status);
    return response.json();
   };
   try{
-   const [names,tags]=await Promise.all([fetchRows('name'),fetchRows('tag')]);
+   const terms=related(term);
+   const queries=terms.flatMap(value=>[['name',value],['tag',value]]);
+   const responses=await Promise.allSettled(queries.map(([field,value])=>fetchRows(field,value)));
    if(token!==request)return;
+   const fulfilled=responses.filter(x=>x.status==='fulfilled');
+   if(!fulfilled.length)throw Error('No directory responses');
    const existing=new Map();
-   for(const x of [...names,...tags]){
+   for(const outcome of fulfilled)for(const x of outcome.value){
     const url=x.url_resolved||x.url||'';
     if(x.lastcheckok!==1||!url.startsWith('https://')||!x.stationuuid)continue;
     if(scope!=='global'&&x.countrycode!==p[2])continue;
+    if(scope==='city'&&norm(x.state)!==norm(city))continue;
     if(!existing.has(x.stationuuid))existing.set(x.stationuuid,clean(x));
    }
    worldResults=[...existing.values()];
@@ -293,9 +299,9 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
     const rank=x=>{const n=norm(x.name),q=norm(term);return n===q?0:n.startsWith(q)?1:n.includes(q)?2:matches(x,term)?3:4};
     return rank(a)-rank(b);
    });
-   worldQuery=term;render();
-   const count=stations.filter(x=>matches(x,term)).length;
-   $('worldSmartInfo').textContent=count+' coincidencias · '+(scope==='city'?city:scope==='country'?p[1]:'Todo el mundo')+' · HTTPS verificadas';
+   worldQuery='';render();
+   const count=stations.length;
+   $('worldSmartInfo').textContent=count+' resultados del directorio · '+(scope==='city'?city:scope==='country'?p[1]:'Todo el mundo')+' · HTTPS (reproducción pendiente de probar)';
    status('Búsqueda inteligente: '+count+' resultados relacionados con «'+term+'»');
   }catch(e){if(e.name!=='AbortError'&&token===request)$('worldSmartInfo').textContent='No se pudo ampliar la búsqueda. Se mantienen las estaciones cargadas.'}
  }
