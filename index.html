@@ -186,7 +186,7 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
  if(!('mediaSession' in navigator))return;
  const ms=navigator.mediaSession;
  const safe=fn=>{try{fn()}catch(e){console.debug('MediaSession unavailable',e)}};
- const metadata=()=>{const st=stations[selected];if(!st)return;safe(()=>{ms.metadata=new MediaMetadata({title:st.name||'Live Radio',artist:'TRAVIEXO RADIO · En vivo',album:'Radio en vivo',artwork:[{src:new URL('assets/traviexo-radio-cover.svg',location.href).href,sizes:'512x512',type:'image/svg+xml'}]})})};
+ const metadata=()=>{const st=stations[selected];if(!st)return;safe(()=>{ms.metadata=new MediaMetadata({title:st.name||'Live Radio',artist:'TRAVIEXO RADIO · En vivo',album:'Radio en vivo',artwork:[{src:new URL('assets/traviexo-radio-premium.PNG',location.href).href,sizes:'1024x1024',type:'image/png'}]})})};
  const state=()=>safe(()=>{ms.playbackState=audio.paused?'paused':'playing'});
  audio.addEventListener('playing',()=>{metadata();state()});
  audio.addEventListener('pause',state);
