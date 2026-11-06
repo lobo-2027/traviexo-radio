@@ -180,4 +180,23 @@ const basePlay=$('play').onclick;$('play').onclick=()=>{if(selected>=0){if(audio
 audio.addEventListener('playing',()=>{cancelReconnect();smartAttempts=0;smartIntent=true});audio.addEventListener('error',scheduleReconnect);audio.addEventListener('stalled',scheduleReconnect);
 window.addEventListener('offline',()=>{cancelReconnect();if(smartIntent)status('Sin conexión. Esperando internet…')});window.addEventListener('online',()=>{if(smartIntent&&audio.paused)scheduleReconnect()});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&smartIntent&&audio.paused)scheduleReconnect()});
 if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('play',()=>{smartIntent=true;smartAttempts=0;cancelReconnect();audio.play().catch(scheduleReconnect)});navigator.mediaSession.setActionHandler('pause',()=>{smartIntent=false;smartGeneration++;cancelReconnect();audio.pause()})}catch{}}
+
+/* V50 — iOS Lock Screen / Control Center; preserve V49 audio playback. */
+(function(){
+ if(!('mediaSession' in navigator))return;
+ const ms=navigator.mediaSession;
+ const safe=fn=>{try{fn()}catch(e){console.debug('MediaSession unavailable',e)}};
+ const metadata=()=>{const st=stations[selected];if(!st)return;safe(()=>{ms.metadata=new MediaMetadata({title:st.name||'Live Radio',artist:'TRAVIEXO RADIO · En vivo',album:'Radio en vivo'})})};
+ const state=()=>safe(()=>{ms.playbackState=audio.paused?'paused':'playing'});
+ audio.addEventListener('playing',()=>{metadata();state()});
+ audio.addEventListener('pause',state);
+ audio.addEventListener('ended',state);
+ const previousChoose=choose;
+ choose=function(i){previousChoose(i);metadata()};
+ safe(()=>ms.setActionHandler('play',()=>{smartIntent=true;smartAttempts=0;cancelReconnect();audio.play().then(state).catch(scheduleReconnect)}));
+ safe(()=>ms.setActionHandler('pause',()=>{smartIntent=false;smartGeneration++;cancelReconnect();audio.pause();state()}));
+ safe(()=>ms.setActionHandler('nexttrack',()=>{if(stations.length)choose((selected+1)%stations.length)}));
+ safe(()=>ms.setActionHandler('previoustrack',()=>{if(stations.length)choose((selected-1+stations.length)%stations.length)}));
+ metadata();state();
+})();
 </script></body></html>
