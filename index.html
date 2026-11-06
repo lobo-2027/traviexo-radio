@@ -224,7 +224,7 @@ $('icecastExplore').addEventListener('click',async()=>{
   const existing=new Set(stations.map(s=>s.url.toLowerCase().replace(/\\/$/,'')));
   const additional=(result.stations||[]).filter(s=>s.id&&s.name&&s.url?.startsWith('https://')&&!existing.has(s.url.toLowerCase().replace(/\\/$/,'')));
   stations=[...stations,...additional];
-  selected=-1;render();status(additional.length+' estaciones Icecast agregadas al catálogo actual · prueba su reproducción');
+  if(!additional.length){status('Icecast no devolvió nuevas estaciones. Su directorio puede estar vacío o temporalmente fuera de servicio.');return;}\n  selected=-1;render();status(additional.length+' estaciones Icecast agregadas al catálogo actual · prueba su reproducción');
  }catch(e){if(token===request)status('Icecast no disponible ahora. Radio Browser sigue funcionando.');}
 });
 </script></body></html>
