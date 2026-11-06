@@ -258,18 +258,25 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
  }
  function applyLocal(){
   if(!worldMode||tab!=='stations')return;
-  if(!worldQuery){worldResults=null;stations=worldBase.slice()}
-  else if(worldResults===null){stations=worldBase.slice()}
-  render();
-  const count=stations.filter(x=>matches(x,worldQuery)).length;
-  $('worldSmartInfo').textContent=worldQuery?count+' coincidencias locales · buscando más estaciones…':'Escribe una estación, género o frecuencia. La búsqueda también consulta el directorio.';
+  if(!worldQuery){
+   worldResults=null;
+   stations=worldBase.slice();
+   render();
+  }else{
+   // Filter existing DOM rows, avoiding rebuilding the entire station list on each keystroke.
+   const rows=$('stations').querySelectorAll('.fav-row');
+   let count=0;
+   for(const row of rows){const visible=norm(row.textContent).includes(norm(worldQuery));row.hidden=!visible;if(visible)count++}
+   $('worldSmartInfo').textContent=count+' coincidencias locales · buscando en Radio Browser…';
+  }
+  if(!worldQuery)$('worldSmartInfo').textContent='Escribe una estación, género o frecuencia.';
  }
  async function remoteSearch(){
   const term=smart.value.trim();
   if(term.length<2||!worldMode||tab!=='stations')return;
   const token=++request,p=places[current],city=citySelect.value;
   if(searchAbort)searchAbort.abort();searchAbort=new AbortController();
-  const params=new URLSearchParams({hidebroken:'true',order:'votes',reverse:'true',limit:'200'});
+  const params=new URLSearchParams({hidebroken:'true',order:'votes',reverse:'true',limit:'100'});
   if(scope!=='global')params.set('countrycode',p[2]);
   if(scope==='city')params.set('state',city);
   // Search name and tags, including useful related musical terms.
@@ -281,7 +288,8 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
   };
   try{
    const terms=related(term);
-   const queries=terms.flatMap(value=>[['name',value],['tag',value]]);
+   const queries=[['name',term],['tag',term]];
+   if(terms.length>1)queries.push(['tag',terms[terms.length-1]]);
    const responses=await Promise.allSettled(queries.map(([field,value])=>fetchRows(field,value)));
    if(token!==request)return;
    const fulfilled=responses.filter(x=>x.status==='fulfilled');
@@ -307,11 +315,12 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
  }
  function schedule(){
   worldQuery=smart.value.trim();
+  ++request; // Invalidate older responses immediately on new input.
   clearTimeout(searchTimer);
   if(searchAbort)searchAbort.abort();
   worldResults=null;
   applyLocal();
-  if(worldQuery.length>=2)searchTimer=setTimeout(remoteSearch,450);
+  if(worldQuery.length>=2)searchTimer=setTimeout(remoteSearch,650);
  }
  smart.addEventListener('input',schedule);
  smart.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(searchTimer);remoteSearch()}});
