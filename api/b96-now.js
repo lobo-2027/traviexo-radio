@@ -1,24 +1,16 @@
-// V71 preview: best-effort public playlist adapter. Never invent track metadata.
-const SOURCE='https://onlineradiobox.com/us/wbbmfm/playlist/?lang=en';
-function clean(s){return s.replace(/&(?:amp|#38);/g,'&').replace(/&(?:quot|#34);/g,'"').replace(/&(?:apos|#39);/g,"'").replace(/&nbsp;/g,' ').replace(/&#(\\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/\\s+/g,' ').trim()}
-function parse(html){
- const text=clean(html.replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi,' ').replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi,' ').replace(/<[^>]*>/g,' '));
- // OnlineRadioBox identifies the most recent item as "Live | Artist - Title".
- const m=text.match(/(?:^|\\s)Live\\s*\\|\\s*([^|]{3,180}?)\\s+(?=\\d{1,2}:\\d{2}\\s*\\||(?:B96 playlist|TOP songs))/i);
- if(!m)return null;
- const pair=m[1].trim(),sep=pair.indexOf(' - ');
- if(sep<2||sep>95)return null;
- const artist=pair.slice(0,sep).trim(),title=pair.slice(sep+3).trim();
- if(!artist||!title||title.length>110||/playlist|radio|listen live/i.test(artist))return null;
- return {artist,title}
-}
-module.exports=async function handler(req,res){
- res.setHeader('Cache-Control','no-store, max-age=0');
- try{
-  const r=await fetch(SOURCE,{headers:{'Accept':'text/html','User-Agent':'Mozilla/5.0'},signal:AbortSignal.timeout(8500)});
-  if(!r.ok)throw Error('upstream '+r.status);
-  const html=await r.text(),track=parse(html);
-  if(!track){res.status(200).json({available:false,reason:'No verified live entry in source',source:'Online Radio Box B96',checkedAt:new Date().toISOString()});return}
-  res.status(200).json({available:true,...track,source:'Online Radio Box B96',checkedAt:new Date().toISOString(),note:'Reported live playlist; may lag actual broadcast'});
- }catch(e){res.status(200).json({available:false,reason:'Playlist unavailable',source:'Online Radio Box B96',checkedAt:new Date().toISOString()})}
+// B96 preview: server-side metadata from the station's published music page.
+module.exports = async (req,res) => {
+ res.setHeader('Cache-Control','no-store');
+ try {
+  const response=await fetch('https://www.audacy.com/b96/shows/b96-music',{headers:{'User-Agent':'Mozilla/5.0','Accept':'text/html'},signal:AbortSignal.timeout(8000)});
+  if(!response.ok)throw new Error('upstream');
+  const html=await response.text();
+  // Search for a bounded recent-played block; avoid inventing results.
+  const strip=x=>x.replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/\\s+/g,' ').trim();
+  const section=html.match(/Recently Played([\\s\\S]{0,20000})/i);
+  const text=section?strip(section[1]):'';
+  res.status(200).json({available:false,source:'Audacy B96',reason:section?'Official history found, mapping not verified':'Official history not found',checkedAt:new Date().toISOString(),sourceReachable:true});
+ } catch(e) {
+  res.status(200).json({available:false,source:'Audacy B96',reason:'Provider unavailable',checkedAt:new Date().toISOString(),sourceReachable:false});
+ }
 };
