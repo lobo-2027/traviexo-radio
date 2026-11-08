@@ -290,14 +290,58 @@ $('resumeLast').onclick=()=>{if(!lastStation)return;let i=stations.findIndex(x=>
 const miniBar=$('v48Mini');let originalVisible=true;
 function refreshMini(){const station=stations[selected];$('miniName').textContent=station?.name||'TRAVIEXO RADIO';$('miniStatus').textContent=audio.paused?'En pausa':'En vivo · reproduciendo';$('miniPlay').textContent=audio.paused?'▶':'Ⅱ';const liked=!!station&&favorites.some(y=>y.id===station.id);$('miniFav').textContent=liked?'♥':'♡';$('miniFav').setAttribute('aria-pressed',String(liked));miniBar.hidden=originalVisible||selected<0}
 $('miniPlay').onclick=()=>$('play').click();$('miniPrev').onclick=()=>$('prev').click();$('miniNext').onclick=()=>$('next').click();$('miniFav').onclick=()=>$('fav').click();const jump=()=>$('player').scrollIntoView({behavior:'smooth',block:'start'});$('miniJump').onclick=jump;$('miniJump').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();jump()}};const check=()=>{const rect=$('player').getBoundingClientRect();originalVisible=rect.bottom>0&&rect.top<innerHeight;refreshMini()};window.addEventListener('scroll',check,{passive:true});window.addEventListener('resize',check);check();['playing','pause','error','waiting'].forEach(ev=>audio.addEventListener(ev,refreshMini));const oldUpdate=update;update=function(){oldUpdate();refreshMini()};
+/* Connection recovery experiment — separate branch, V70 production unchanged.
+   Never restart on an intentional pause, station change, or offline event.
+   Safari may suspend timers while the PWA is in the background. */
 let smartIntent=false,smartAttempts=0,smartTimer=null,smartGeneration=0;
+let lastProgressAt=Date.now(),lastAudioTime=0;
 function cancelReconnect(){if(smartTimer!==null){clearTimeout(smartTimer);smartTimer=null}}
-function scheduleReconnect(){if(!smartIntent||!navigator.onLine||smartTimer!==null||!audio.src)return;if(smartAttempts>=5){status('Señal interrumpida. Toca ▶ para reintentar.');return}const gen=smartGeneration,src=audio.src;const delay=Math.min(30000,1500*2**smartAttempts);smartAttempts++;status('Reconectando señal… '+smartAttempts+'/5');smartTimer=setTimeout(async()=>{smartTimer=null;if(!smartIntent||!navigator.onLine||gen!==smartGeneration||src!==audio.src)return;try{audio.load();await audio.play();smartAttempts=0;status('Señal recuperada');update()}catch{scheduleReconnect()}},delay)}
-const baseChoose=choose;choose=function(i){cancelReconnect();smartGeneration++;smartAttempts=0;smartIntent=true;baseChoose(i)};
-const basePlay=$('play').onclick;$('play').onclick=()=>{if(selected>=0){if(audio.paused){smartIntent=true;smartAttempts=0;cancelReconnect()}else{smartIntent=false;smartGeneration++;cancelReconnect()}}basePlay()};
-audio.addEventListener('playing',()=>{cancelReconnect();smartAttempts=0;smartIntent=true});audio.addEventListener('error',scheduleReconnect);audio.addEventListener('stalled',scheduleReconnect);
-window.addEventListener('offline',()=>{cancelReconnect();if(smartIntent)status('Sin conexión. Esperando internet…')});window.addEventListener('online',()=>{if(smartIntent&&audio.paused)scheduleReconnect()});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&smartIntent&&audio.paused)scheduleReconnect()});
-if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('play',()=>{smartIntent=true;smartAttempts=0;cancelReconnect();audio.play().catch(scheduleReconnect)});navigator.mediaSession.setActionHandler('pause',()=>{smartIntent=false;smartGeneration++;cancelReconnect();audio.pause()})}catch{}}
+function scheduleReconnect(){
+ if(!smartIntent||!navigator.onLine||smartTimer!==null||!audio.src)return;
+ const gen=smartGeneration,src=audio.src;
+ const delay=Math.min(60000,1500*2**Math.min(smartAttempts,5));
+ smartAttempts++;
+ status('Señal interrumpida · reconexión automática ('+smartAttempts+')');
+ smartTimer=setTimeout(async()=>{
+  smartTimer=null;
+  if(!smartIntent||!navigator.onLine||gen!==smartGeneration||src!==audio.src)return;
+  try{
+   audio.load();
+   await audio.play();
+   /* A resolved play() is not proof that data is flowing.
+      The watchdog will detect a stream that remains frozen. */
+   lastProgressAt=Date.now();lastAudioTime=audio.currentTime;
+   update();
+  }catch{scheduleReconnect()}
+ },delay)
+}
+const baseChoose=choose;
+choose=function(i){cancelReconnect();smartGeneration++;smartAttempts=0;smartIntent=true;lastProgressAt=Date.now();lastAudioTime=0;baseChoose(i)};
+const basePlay=$('play').onclick;
+$('play').onclick=()=>{
+ if(selected>=0){
+  if(audio.paused){smartIntent=true;smartAttempts=0;cancelReconnect();lastProgressAt=Date.now()}
+  else{smartIntent=false;smartGeneration++;cancelReconnect()}
+ }
+ basePlay()
+};
+audio.addEventListener('playing',()=>{cancelReconnect();smartAttempts=0;smartIntent=true;lastProgressAt=Date.now();lastAudioTime=audio.currentTime});
+audio.addEventListener('timeupdate',()=>{if(audio.currentTime!==lastAudioTime){lastAudioTime=audio.currentTime;lastProgressAt=Date.now()}});
+audio.addEventListener('error',scheduleReconnect);
+audio.addEventListener('stalled',scheduleReconnect);
+audio.addEventListener('ended',scheduleReconnect);
+audio.addEventListener('waiting',()=>{if(smartIntent)lastProgressAt=Math.min(lastProgressAt,Date.now()-6000)});
+window.addEventListener('offline',()=>{cancelReconnect();if(smartIntent)status('Sin conexión · esperando internet…')});
+window.addEventListener('online',()=>{if(smartIntent){lastProgressAt=Date.now()-16000;scheduleReconnect()}});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&smartIntent){if(audio.paused||Date.now()-lastProgressAt>16000)scheduleReconnect()}});
+setInterval(()=>{
+ if(!smartIntent||!navigator.onLine||!audio.src||document.hidden)return;
+ if(Date.now()-lastProgressAt>16000)scheduleReconnect()
+},5000);
+if('mediaSession' in navigator){try{
+ navigator.mediaSession.setActionHandler('play',()=>{smartIntent=true;smartAttempts=0;cancelReconnect();lastProgressAt=Date.now();audio.play().catch(scheduleReconnect)});
+ navigator.mediaSession.setActionHandler('pause',()=>{smartIntent=false;smartGeneration++;cancelReconnect();audio.pause()})
+}catch{}}
 
 /* V50 — iOS Lock Screen / Control Center; preserve V49 audio playback. */
 (function(){
