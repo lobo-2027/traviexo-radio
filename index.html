@@ -443,4 +443,68 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
  document.addEventListener('keydown',e=>{if(e.key==='Escape')Object.values(windows).forEach(w=>w.classList.remove('open'))});
 })();
 </script>
+
+<style id="traviexo-library-windows-style">
+/* Visual navigation layer only. Original tabs, filters, search, favorites and playback handlers remain. */
+#traviexoLibraryLauncher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0 16px}
+.libraryLaunch{min-height:77px;display:flex;align-items:center;gap:11px;padding:12px 13px;border:1px solid #c79a59;border-radius:19px;background:linear-gradient(145deg,#292a31,#0a0b10 62%,#33200e);box-shadow:inset 0 1px 2px #fff6,0 5px 15px #0009;color:#fff3dd;text-align:left;font-weight:800;font-size:clamp(12px,3.5vw,16px)}
+.libraryLaunch:active{transform:scale(.98)}
+.libraryLaunch .libraryIcon{font-size:26px;color:#ffd18b;flex:none}
+.libraryLaunch .libraryArrow{margin-left:auto;color:#f2bf6c;font-size:23px}
+#traviexoLibraryHiddenNav{display:none!important}
+#traviexoLibraryLayer{position:fixed;inset:0;z-index:5100;overflow-y:auto;overscroll-behavior:contain;background:radial-gradient(ellipse at 50% -15%,#6c441e 0%,#0b0c16 45%,#030408 100%);color:#ffe7b8;padding:calc(env(safe-area-inset-top) + 14px) 12px calc(env(safe-area-inset-bottom) + 85px);visibility:hidden;opacity:0;pointer-events:none;transform:translateX(105%);transition:transform .24s ease,opacity .24s ease,visibility .24s}
+#traviexoLibraryLayer.open{visibility:visible;opacity:1;pointer-events:auto;transform:translateX(0)}
+#traviexoLibraryLayer .libraryTop{max-width:800px;margin:0 auto 13px;display:flex;align-items:center;gap:12px}
+#traviexoLibraryLayer .libraryBack{padding:11px 14px;border-radius:30px;border:1px solid #e9ba73;background:#16151b;color:#ffe2aa;font-weight:800}
+#traviexoLibraryLayer .libraryHeading{font-size:clamp(20px,6vw,29px);font-weight:900;color:#ffe0a2;text-shadow:0 0 12px #d5a65e55}
+#traviexoLibraryLayer .libraryContent{max-width:800px;margin:auto}
+#traviexoLibraryLayer .layout{display:block!important}
+#traviexoLibraryLayer .layout>.list{width:100%!important}
+#traviexoLibraryLayer .genres-panel{margin:0 0 12px}
+#traviexoLibraryLayer .last-station{display:none!important}
+#traviexoLibraryLayer .list{margin:0!important}
+@media(min-width:700px){#traviexoLibraryLauncher{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+<script id="traviexo-library-windows-js">
+(function(){
+ const main=document.querySelector('main'),tabs=document.querySelector('nav.tabs'),filters=document.querySelector('nav.filters'),genres=document.getElementById('genresPanel'),last=document.getElementById('lastStation'),layout=document.querySelector('.layout');
+ if(!main||!tabs||!filters||!genres||!layout)return;
+ const launcher=document.createElement('div');launcher.id='traviexoLibraryLauncher';launcher.setAttribute('aria-label','Biblioteca de estaciones');
+ const choices=[['explorar','♫','Explorar'],['favorites','♡','Favoritas'],['recent','◷','Recientes'],['mexico','🇲🇽','México'],['usa','🇺🇸','USA Stations'],['latinas','🌎','Latinas'],['genres','▦','Categorías'],['all','♫','Todas']];
+ for(const [key,icon,label] of choices){
+  const button=document.createElement('button');button.type='button';button.className='libraryLaunch';button.dataset.mode=key;
+  const mark=document.createElement('span');mark.className='libraryIcon';mark.textContent=icon;
+  const title=document.createElement('span');title.textContent=label;
+  const arrow=document.createElement('span');arrow.className='libraryArrow';arrow.textContent='›';
+  button.append(mark,title,arrow);launcher.append(button);
+ }
+ const hiddenNav=document.createElement('div');hiddenNav.id='traviexoLibraryHiddenNav';
+ tabs.before(launcher);launcher.after(hiddenNav);hiddenNav.append(tabs,filters);
+ const layer=document.createElement('section');layer.id='traviexoLibraryLayer';layer.setAttribute('aria-label','Biblioteca TRAVIEXO');
+ const top=document.createElement('div');top.className='libraryTop';
+ const back=document.createElement('button');back.type='button';back.className='libraryBack';back.textContent='← Regresar';
+ const heading=document.createElement('strong');heading.className='libraryHeading';heading.textContent='Explorar';
+ top.append(back,heading);
+ const content=document.createElement('div');content.className='libraryContent';
+ content.append(genres,layout);layer.append(top,content);document.body.append(layer);
+ const open=mode=>{
+  if(mode==='favorites'||mode==='recent'||mode==='explorar'){
+   const tab=mode==='explorar'?'stations':mode;
+   tabs.querySelector('[data-tab="'+tab+'"]')?.click();
+  }else if(mode==='genres'){
+   filters.querySelector('[data-filter="all"]')?.click();
+   const more=document.getElementById('moreGenres');
+   if(genres.hidden)more?.click();
+  }else{
+   if(!genres.hidden)document.getElementById('moreGenres')?.click();
+   filters.querySelector('[data-filter="'+mode+'"]')?.click();
+  }
+  heading.textContent=choices.find(x=>x[0]===mode)?.[2]||'Estaciones';
+  layer.classList.add('open');layer.scrollTop=0;
+ };
+ launcher.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>open(b.dataset.mode)));
+ back.addEventListener('click',()=>layer.classList.remove('open'));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')layer.classList.remove('open')});
+})();
+</script>
 </body></html>
