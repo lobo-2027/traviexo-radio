@@ -317,4 +317,54 @@ if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('pla
  safe(()=>ms.setActionHandler('previoustrack',()=>{if(stations.length)choose((selected-1+stations.length)%stations.length)}));
  metadata();state();
 })();
-</script></body></html>
+</script>
+<style id="traviexo-radio-windows-style">
+/* Visual navigation only. Audio element, stream URLs, player and media handlers untouched. */
+#radioWindowsCards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 18px}
+.radioWindowCard{min-height:166px;border:1px solid #e8b868;border-radius:22px;box-shadow:0 8px 25px #0009,inset 0 0 20px #ffffff12;position:relative;overflow:hidden;color:#fff;display:flex;flex-direction:column;justify-content:flex-end;padding:15px;cursor:pointer;text-align:left;font-weight:900;font-size:19px;letter-spacing:.6px;text-shadow:0 2px 8px #000}
+.radioWindowCard small{font-size:11px;font-weight:600;color:#ffe1a9;margin-top:5px}
+.radioWindowCard:before{content:"";position:absolute;inset:0;opacity:.8;z-index:-1}
+.radioWindowCard.son{background:radial-gradient(circle at 50% 15%,#ab18ebaa,transparent 65%),linear-gradient(145deg,#2c0647,#080c1d 75%);border-color:#d966ef}
+.radioWindowCard.uni{background:radial-gradient(circle at 50% 10%,#00baff99,transparent 60%),linear-gradient(145deg,#142f6b,#080b20 75%);border-color:#61bfff}
+.radioWindowCard .symbol{font-size:46px;display:block;margin-bottom:10px;filter:drop-shadow(0 0 12px #ffcf7b)}
+#sonOfficial,#radioWindowsOriginalSidebar{display:none!important}
+.radioWindowLayer{position:fixed;inset:0;z-index:5000;overflow:auto;background:linear-gradient(160deg,#060713,#12102b 52%,#050911);padding:calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 95px);color:#ffe7b8;visibility:hidden;opacity:0;pointer-events:none;transform:translateX(110%);transition:transform .24s ease,opacity .24s ease,visibility .24s}
+.radioWindowLayer.open{visibility:visible;opacity:1;pointer-events:auto;transform:translateX(0)}
+.radioWindowLayer.son{background:radial-gradient(circle at top,#4e127c,#100c29 42%,#080910 85%)}
+.radioWindowLayer.uni{background:radial-gradient(circle at top,#074887,#10112b 43%,#080910 85%)}
+.radioWindowHead{border:1px solid #dfb66d;border-radius:22px;background:linear-gradient(145deg,#11182acc,#101322aa);box-shadow:0 0 24px #dbac4a30;padding:18px;text-align:center;margin-bottom:15px}
+.radioWindowHead strong{display:block;font-size:25px;letter-spacing:1px;color:#fff;text-shadow:0 0 15px #e1b77a}
+.radioWindowHead p{font-size:12px;color:#e7cbad;margin:8px 0 0}
+.radioWindowBack{display:block;border:1px solid #e8b967;border-radius:28px;padding:12px 16px;background:#090f20;color:#ffdf9c;font-size:15px;font-weight:800;margin-bottom:15px}
+.radioWindowBody{max-width:650px;margin:0 auto}
+.radioWindowBody #sonOfficial,.radioWindowBody #radioWindowsOriginalSidebar{display:block!important}
+.radioWindowBody #radioWindowsOriginalSidebar{width:100%;box-sizing:border-box}
+.radioWindowBody #radioWindowsOriginalSidebar iframe{max-width:100%}
+#radioWindowsCards + .layout{margin-top:0}
+@media(max-width:360px){.radioWindowCard{font-size:16px;min-height:150px}}
+</style>
+<script id="traviexo-radio-windows-js">
+(function(){
+ const layout=document.querySelector('.layout'),son=document.getElementById('sonOfficial'),sidebar=document.querySelector('.sidebar');
+ if(!layout||!son||!sidebar)return;
+ const cards=document.createElement('div');cards.id='radioWindowsCards';
+ cards.innerHTML='<button class="radioWindowCard son" type="button" data-radio-window="son"><span class="symbol">🎧</span>SONIDERO RADIO<small>♫ Abrir ventana individual ›</small></button><button class="radioWindowCard uni" type="button" data-radio-window="uni"><span class="symbol">🌈</span>UNIVISIÓN RADIO<small>♫ Abrir ventana individual ›</small></button>';
+ layout.before(cards);
+ sidebar.id='radioWindowsOriginalSidebar';
+ const windows={};
+ for(const [key,label,subtitle] of [['son','SONIDERO RADIO','Son Sonidero · controles originales'],['uni','UNIVISIÓN RADIO','Catálogo oficial · reproductor original']]){
+  const layer=document.createElement('section');layer.className='radioWindowLayer '+key;layer.setAttribute('aria-label',label);
+  const back=document.createElement('button');back.type='button';back.className='radioWindowBack';back.textContent='← Volver a TRAVIEXO';
+  const head=document.createElement('div');head.className='radioWindowHead';
+  const title=document.createElement('strong');title.textContent=label;const desc=document.createElement('p');desc.textContent=subtitle;head.append(title,desc);
+  const body=document.createElement('div');body.className='radioWindowBody';
+  body.append(key==='son'?son:sidebar);
+  layer.append(back,head,body);document.body.append(layer);
+  back.onclick=()=>{layer.classList.remove('open');history.replaceState(null,'',location.pathname+location.search)};
+  windows[key]=layer;
+ }
+ cards.querySelectorAll('button').forEach(b=>b.onclick=()=>{Object.values(windows).forEach(w=>w.classList.remove('open'));windows[b.dataset.radioWindow].classList.add('open')});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')Object.values(windows).forEach(w=>w.classList.remove('open'))});
+})();
+</script>
+</body></html>
