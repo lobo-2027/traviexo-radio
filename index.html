@@ -375,6 +375,49 @@ audio.addEventListener('playing',()=>{cancelReconnect();smartAttempts=0;smartInt
 window.addEventListener('offline',()=>{cancelReconnect();if(smartIntent)status('Sin conexión. Esperando internet…')});window.addEventListener('online',()=>{if(smartIntent&&audio.paused)scheduleReconnect()});document.addEventListener('visibilitychange',()=>{if(!document.hidden&&smartIntent&&audio.paused)scheduleReconnect()});
 if('mediaSession' in navigator){try{navigator.mediaSession.setActionHandler('play',()=>{smartIntent=true;smartAttempts=0;cancelReconnect();audio.play().catch(scheduleReconnect)});navigator.mediaSession.setActionHandler('pause',()=>{smartIntent=false;smartGeneration++;cancelReconnect();audio.pause()})}catch{}}
 
+/* V70 iOS interruption recovery — experimental, no automatic stream reset.
+   Keep the existing station and explicit user pause intent intact. */
+(function(){
+ let interrupted=false, recoveryPending=false, recovering=false;
+ let wasPlaying=false;
+ const currentSource=()=>audio.currentSrc||audio.src;
+ let sourceAtInterruption='';
+ function recover(){
+   if(!recoveryPending||recovering||!smartIntent||!audio.src||!navigator.onLine||document.hidden)return;
+   if(sourceAtInterruption && currentSource()!==sourceAtInterruption){recoveryPending=false;return}
+   recovering=true;
+   // Do not call load(): resetting a healthy live stream can cause new interruptions.
+   audio.play().then(()=>{
+     recoveryPending=false;interrupted=false;
+     status('Reproduciendo · radio recuperada');
+     update();
+   }).catch(()=>{
+     status('Audio interrumpido · toca ▶ para reanudar');
+     update();
+   }).finally(()=>{recovering=false});
+ }
+ audio.addEventListener('pause',()=>{
+   if(smartIntent&&wasPlaying&&!document.hidden){
+     interrupted=true;recoveryPending=true;sourceAtInterruption=currentSource();
+   }
+ });
+ audio.addEventListener('playing',()=>{
+   wasPlaying=true;interrupted=false;recoveryPending=false;
+ });
+ // iOS may retain paused=false during an interruption; don't trust the icon alone.
+ document.addEventListener('visibilitychange',()=>{
+   if(document.hidden){if(smartIntent&&audio.src){sourceAtInterruption=currentSource();recoveryPending=true}return}
+   if(smartIntent&&audio.src&&recoveryPending)recover();
+ });
+ window.addEventListener('pageshow',()=>{if(smartIntent&&recoveryPending)recover()});
+ // If an alarm leaves the element nominally playing, allow a one-tap restart
+ // of the same station rather than forcing the listener to choose another.
+ const button=$('play');
+ button.addEventListener('click',()=>{
+   if(recoveryPending&&smartIntent&&audio.paused)recover();
+ },{capture:true});
+})();
+
 /* V50 — iOS Lock Screen / Control Center; preserve V49 audio playback. */
 (function(){
  if(!('mediaSession' in navigator))return;
